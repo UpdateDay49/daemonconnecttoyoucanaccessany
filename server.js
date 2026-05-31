@@ -49,12 +49,10 @@ app.get('/connectto/:website(*)', async (req, res) => {
             timeout: 60000      
         });
 
-        // 3. Forward the target's headers to the client
         Object.entries(response.headers).forEach(([key, value]) => {
             res.setHeader(key, value);
         });
 
-        // Pipe the response stream to the client
         response.data.pipe(res);
 
     } catch (error) {

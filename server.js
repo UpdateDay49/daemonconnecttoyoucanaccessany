@@ -1,10 +1,7 @@
-mkdir -p daemon-proxy && cd daemon-proxy && cat << 'EOF' > install.sh && bash install.sh
-#!/bin/bash
+echo "🚀 Generating Render Proxy Files..."
 
-echo "🚀 Starting Daemon Proxy Auto-Install..."
-
-echo "📦 1/4 Writing package.json..."
-cat << 'INNER_EOF' > package.json
+echo "📦 1/4 Creating package.json..."
+cat << 'EOF' > package.json
 {
   "name": "daemon-proxy",
   "version": "1.0.0",
@@ -19,10 +16,10 @@ cat << 'INNER_EOF' > package.json
     "socks-proxy-agent": "^8.0.3"
   }
 }
-INNER_EOF
+EOF
 
-echo "📜 2/4 Writing server.js..."
-cat << 'INNER_EOF' > server.js
+echo "📜 2/4 Creating server.js (JavaScript)..."
+cat << 'EOF' > server.js
 const express = require('express');
 const axios = require('axios');
 const { SocksProxyAgent } = require('socks-proxy-agent');
@@ -84,53 +81,45 @@ app.get('/connectto/:website(*)', async (req, res) => {
 app.listen(port, () => {
     console.log(`Daemon Proxy listening on port ${port}`);
 });
-INNER_EOF
+EOF
 
-echo "🐳 3/4 Writing Dockerfile..."
-cat << 'INNER_EOF' > Dockerfile
-FROM node:20-alpine
+echo "🐳 3/4 Creating Dockerfile..."
+cat << 'EOF' > Dockerfile
+FROM node:20-slim
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev
 COPY server.js .
 EXPOSE 3000
 CMD ["npm", "start"]
-INNER_EOF
+EOF
 
-echo "🐙 4/4 Writing docker-compose.yml..."
-cat << 'INNER_EOF' > docker-compose.yml
-version: '3.8'
-
+echo "🐙 4/4 Creating render.yaml..."
+cat << 'EOF' > render.yaml
 services:
-  proxy-gateway:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      - TOR_SOCKS=socks5h:
-      - I2P_SOCKS=socks5h:
-    depends_on:
-      - tor-daemon
-      - i2pd-daemon
-    restart: unless-stopped
-
-  tor-daemon:
+  - type: pserv
+    name: tor-daemon
+    env: docker
     image: osminogin/tor-simple
-    expose:
-      - "9050"
-    restart: unless-stopped
 
-  i2pd-daemon:
+  - type: pserv
+    name: i2pd-daemon
+    env: docker
     image: purplei2p/i2pd
-    expose:
-      - "4447"
-    restart: unless-stopped
-INNER_EOF
 
-echo "⚙️ Building and starting Docker containers in the background..."
-docker compose up -d --build || docker-compose up -d --build
+  - type: web
+    name: daemon-proxy
+    env: docker
+    plan: free 
+    envVars:
+      - key: TOR_SOCKS
+        value: socks5h://tor-daemon:9050
+      - key: I2P_SOCKS
+        value: socks5h://i2pd-daemon:4447
+EOF
 
 echo "✅ Setup Complete!"
-echo "🌐 Your proxy is now live."
-echo "Test a connection using: curl http://localhost:3000/connectto/https://duckduckgogg42xjoc72x3sjtuxvtuxvtuxvtuxvtuxvtux.onion"
-EOF
+echo "Now push these files to GitHub to trigger your Render deployment:"
+echo "  git add ."
+echo "  git commit -m 'Auto-install clean setup'"
+echo "  git push"
